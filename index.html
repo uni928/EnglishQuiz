@@ -1,0 +1,1397 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>英語学習 4択クイズ</title>
+  <style>
+    :root{
+      --bg:#0f172a; /* slate-900 */
+      --panel:#111827ee; /* gray-900 */
+      --text:#e5e7eb; /* gray-200 */
+      --muted:#9ca3af; /* gray-400 */
+      --accent:#22d3ee; /* cyan-400 */
+      --right:#10b981; /* emerald-500 */
+      --wrong:#ef4444; /* red-500 */
+      --btn:#1f2937; /* gray-800 */
+      --btn-hover:#374151; /* gray-700 */
+    }
+    html,body{height:100%}
+    body{margin:0;background:linear-gradient(120deg,#0b1220,#0f172a 40%,#1e293b);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,Apple Color Emoji,Segoe UI Emoji,sans-serif}
+    .container{max-width:980px;margin:20px auto;padding:20px}
+    header{display:flex;flex-wrap:wrap;align-items:center;gap:12px;justify-content:space-between}
+    h1{font-size:clamp(20px,4vw,28px);letter-spacing:.5px;margin:0}
+    .badge{font-size:12px;color:#0b1220;background:var(--accent);padding:4px 8px;border-radius:999px;font-weight:700}
+
+    .grid{display:grid;gap:16px;grid-template-columns:1fr}
+    @media (min-width:960px){
+      .grid{grid-template-columns: 1.2fr .8fr}
+    }
+
+    .card{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:18px;backdrop-filter: blur(6px);box-shadow:0 10px 30px rgba(0,0,0,.2)}
+    .card h2{margin:.2rem 0 1rem;font-size:20px;color:#fff}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+    .prompt{font-size:18px;line-height:1.7;background:rgba(2,6,23,.6);border:1px solid rgba(255,255,255,.06);padding:14px;border-radius:12px}
+
+    .choices{display:grid;gap:10px;margin-top:14px}
+    .choice{border:1px solid rgba(255,255,255,.08);background:var(--btn);padding:12px 14px;border-radius:12px;cursor:pointer;text-align:left;font-size:16px}
+    .choice:hover{background:var(--btn-hover)}
+    .choice.correct{outline:2px solid var(--right);background:rgba(16,185,129,.1)}
+    .choice.wrong{outline:2px solid var(--wrong);background:rgba(239,68,68,.12)}
+    .choice[disabled]{opacity:.65;cursor:not-allowed}
+
+    .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    button{border:1px solid rgba(255,255,255,.1);background:var(--btn);color:var(--text);padding:10px 14px;border-radius:10px;cursor:pointer}
+    button:hover{background:var(--btn-hover)}
+
+    .muted{color:var(--muted)}
+    .stat{display:flex;gap:10px;align-items:center}
+    .pill{border:1px solid rgba(255,255,255,.1);padding:6px 10px;border-radius:999px}
+
+    label{font-size:13px;color:var(--muted)}
+    input[type="text"], textarea, select{width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:#0b1220;color:var(--text)}
+    textarea{min-height:80px}
+    .admin h3{margin:.2rem 0 .6rem}
+    .hr{height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.15),transparent);margin:10px 0}
+    .small{font-size:12px}
+    .hint{font-size:14px;color:#cbd5e1}
+    .right{color:var(--right);font-weight:700}
+    .wrong{color:var(--wrong);font-weight:700}
+    .kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;border:1px solid rgba(255,255,255,.2);padding:0 6px;border-radius:6px}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>英語学習 4択クイズ</h1>
+      <div class="row">
+        <span class="badge">オフライン・単一HTML</span>
+      </div>
+    </header>
+
+    <div class="grid">
+      <!-- Quiz Panel -->
+      <section class="card" id="quizCard">
+        <h2>問題</h2>
+        <div class="stat">
+          <span id="progress" class="pill">1 / 1</span>
+          <span id="score" class="pill">得点: 0</span>
+          <span id="streak" class="pill">連続正解: 0</span>
+        </div>
+        <p class="muted small" style="margin-top:6px">数字キー <span class="kbd">1</span>-<span class="kbd">4</span> でも選べます。</p>
+        <div id="prompt" class="prompt">Loading...</div>
+        <div class="choices" id="choices"></div>
+        <div id="feedback" class="hint" style="min-height:22px;margin-top:8px"></div>
+        <div class="controls">
+          <button id="btnNext">次の問題 ▶</button>
+          <button id="btnShow">答えを表示</button>
+          <button id="btnShuffle">ランダム出題</button>
+          <button id="btnReset">リセット</button>
+        </div>
+      </section>
+
+      <!-- Admin / Authoring Panel -->
+      <section class="card admin">
+        <h2>問題の追加・管理</h2>
+        <p class="small muted">説明（＝問題文）と4つの選択肢を入力し、正解を選んで「追加」。ローカルに自動保存されます。</p>
+        <div class="hr"></div>
+        <div>
+          <label for="qPrompt">説明 / 問題文（英語でも日本語でもOK）</label>
+          <textarea id="qPrompt" placeholder="例：'go over' に最も近い意味はどれ？"></textarea>
+        </div>
+        <div class="row" style="gap:10px">
+          <div style="flex:1">
+            <label>選択肢1</label>
+            <input type="text" id="opt0" placeholder="例：review" />
+          </div>
+          <div style="flex:1">
+            <label>選択肢2</label>
+            <input type="text" id="opt1" placeholder="例：ignore" />
+          </div>
+        </div>
+        <div class="row" style="gap:10px;margin-top:8px">
+          <div style="flex:1">
+            <label>選択肢3</label>
+            <input type="text" id="opt2" placeholder="例：accelerate" />
+          </div>
+          <div style="flex:1">
+            <label>選択肢4</label>
+            <input type="text" id="opt3" placeholder="例：replace" />
+          </div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <div style="flex:1">
+            <label for="ans">正解（1〜4）</label>
+            <select id="ans">
+              <option value="0">1</option>
+              <option value="1">2</option>
+              <option value="2">3</option>
+              <option value="3">4</option>
+            </select>
+          </div>
+          <div style="flex:2">
+            <label for="hint">ヒント / 解説（任意）</label>
+            <input type="text" id="hint" placeholder="例：'go over' = review（見直す）" />
+          </div>
+        </div>
+        <div class="controls" style="margin-top:10px">
+          <button id="btnAdd">問題を追加</button>
+          <button id="btnExport">JSONを書き出し</button>
+          <label for="fileImport" class="pill" style="cursor:pointer">JSONを読み込み</label>
+          <input id="fileImport" type="file" accept="application/json" style="display:none" />
+          <button id="btnClear">全削除（初期にもどす）</button>
+        </div>
+        <p class="small muted" id="meta"></p>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    // ====== データ構造 ======
+    /** @typedef {{prompt:string, choices:[string,string,string,string], answer:number, hint?:string}} QA */
+
+    const STORAGE_KEY = 'eng4choice_bank_v1';
+    const STORAGE_META = 'eng4choice_meta_v1';
+
+    /** 初期サンプル問題（自由に消してOK） */
+    const SAMPLE = [
+  {
+    "prompt": "『increase』の反意語は？",
+    "choices": [
+      "boost",
+      "decrease",
+      "rise",
+      "grow"
+    ],
+    "answer": 1,
+    "hint": "increase ↔ decrease（減る）"
+  },
+  {
+    "prompt": "Choose the closest synonym for 'negligible'.",
+    "choices": [
+      "abundant",
+      "relevant",
+      "massive",
+      "insignificant"
+    ],
+    "answer": 3,
+    "hint": "negligible = insignificant（ごくわずかな）"
+  },
+  {
+    "prompt": "『ambiguous』の同義語は？",
+    "choices": [
+      "detailed",
+      "precise",
+      "unclear",
+      "obvious"
+    ],
+    "answer": 2,
+    "hint": "ambiguous = unclear（あいまいな）"
+  },
+  {
+    "prompt": "Fill in: 'The meeting was canceled ___ the storm.'",
+    "choices": [
+      "because",
+      "due",
+      "thanks",
+      "because of"
+    ],
+    "answer": 3,
+    "hint": "because of + noun"
+  },
+  {
+    "prompt": "Pick a synonym for 'convey'.",
+    "choices": [
+      "communicate",
+      "confuse",
+      "delay",
+      "hide"
+    ],
+    "answer": 0,
+    "hint": "convey = communicate（伝える）"
+  },
+  {
+    "prompt": "Pick the meaning of 'under the weather'.",
+    "choices": [
+      "being poor",
+      "being busy",
+      "feeling ill",
+      "being outside"
+    ],
+    "answer": 2,
+    "hint": "under the weather = 体調が悪い"
+  },
+  {
+    "prompt": "Choose the word that best completes the sentence: 'He made a ______ mistake.'",
+    "choices": [
+      "deep",
+      "serious",
+      "strong",
+      "heavy"
+    ],
+    "answer": 1,
+    "hint": "make a serious mistake（重大なミスをする）"
+  },
+  {
+    "prompt": "Choose the closest synonym for 'abundant'.",
+    "choices": [
+      "scarce",
+      "hostile",
+      "fragile",
+      "plentiful"
+    ],
+    "answer": 3,
+    "hint": "abundant = plentiful（豊富な）"
+  },
+  {
+    "prompt": "Pick the meaning of 'hit the sack'.",
+    "choices": [
+      "to make a mistake",
+      "to go to bed",
+      "to win a prize",
+      "to start working hard"
+    ],
+    "answer": 1,
+    "hint": "hit the sack = 寝る"
+  },
+  {
+    "prompt": "Choose: 'He is responsible ___ sales.'",
+    "choices": [
+      "with",
+      "at",
+      "for",
+      "to"
+    ],
+    "answer": 2,
+    "hint": "be responsible for ~"
+  },
+  {
+    "prompt": "Which means 'to take control of (a company or role)'?",
+    "choices": [
+      "take over",
+      "take up",
+      "take after",
+      "take in"
+    ],
+    "answer": 0,
+    "hint": "take over = 引き継ぐ"
+  },
+  {
+    "prompt": "Choose the natural sentence.",
+    "choices": [
+      "She is used to get up early.",
+      "She used to get up early now.",
+      "She is used to getting up early.",
+      "She used to getting up early."
+    ],
+    "answer": 2,
+    "hint": "be used to ~ing（～に慣れている）"
+  },
+  {
+    "prompt": "Select the antonym of 'expand'.",
+    "choices": [
+      "contract",
+      "enlarge",
+      "widen",
+      "extend"
+    ],
+    "answer": 0,
+    "hint": "expand ↔ contract（縮小する）"
+  },
+  {
+    "prompt": "『scarce』の反意語を選んでください。",
+    "choices": [
+      "plentiful",
+      "minimal",
+      "few",
+      "rare"
+    ],
+    "answer": 0,
+    "hint": "scarce ↔ plentiful（豊富な）"
+  },
+  {
+    "prompt": "Which phrasal verb means 'to postpone'?",
+    "choices": [
+      "bring up",
+      "take over",
+      "put off",
+      "turn up"
+    ],
+    "answer": 2,
+    "hint": "put off = 延期する"
+  },
+  {
+    "prompt": "Choose the closest synonym for 'meticulous'.",
+    "choices": [
+      "generous",
+      "noisy",
+      "careful and thorough",
+      "careless"
+    ],
+    "answer": 2,
+    "hint": "meticulous = 非常に丁寧で細心の"
+  },
+  {
+    "prompt": "Choose the natural sentence.",
+    "choices": [
+      "I have never gone Canada.",
+      "I have never been to Canada.",
+      "I was never to Canada.",
+      "I have never went to Canada."
+    ],
+    "answer": 1,
+    "hint": "have been to ~（行ったことがある）"
+  },
+  {
+    "prompt": "Select the best: 'pay ______ to the details.'",
+    "choices": [
+      "notice",
+      "attention",
+      "care",
+      "interest"
+    ],
+    "answer": 1,
+    "hint": "pay attention to ~（注意を払う）"
+  },
+  {
+    "prompt": "Choose the correct word: 'Let's ______ the results.'",
+    "choices": [
+      "ally",
+      "announce",
+      "analog",
+      "analyze"
+    ],
+    "answer": 3,
+    "hint": "analyze results（分析する）"
+  },
+  {
+    "prompt": "Choose the word that matches: 'to cancel an event.'",
+    "choices": [
+      "set up",
+      "hand in",
+      "call off",
+      "carry on"
+    ],
+    "answer": 2,
+    "hint": "call off = 中止する"
+  },
+  {
+    "prompt": "Choose the best: 'meet the ______.'",
+    "choices": [
+      "line",
+      "outline",
+      "deadline",
+      "headline"
+    ],
+    "answer": 2,
+    "hint": "meet the deadline（締切に間に合う）"
+  },
+  {
+    "prompt": "'to distribute (papers, items)' は？",
+    "choices": [
+      "hand off",
+      "hand in",
+      "hand over",
+      "hand out"
+    ],
+    "answer": 3,
+    "hint": "hand out = 配る"
+  },
+  {
+    "prompt": "Choose the correct word: 'He finally ______ the mystery.'",
+    "choices": [
+      "solved",
+      "resolved",
+      "absolved",
+      "dissolved"
+    ],
+    "answer": 0,
+    "hint": "solve a mystery（謎を解く）"
+  },
+  {
+    "prompt": "Fill in: 'I'll see you ___ Monday.'",
+    "choices": [
+      "on",
+      "by",
+      "in",
+      "at"
+    ],
+    "answer": 0,
+    "hint": "days of the week → on"
+  },
+  {
+    "prompt": "『controversial』に最も近いのは？",
+    "choices": [
+      "peaceful",
+      "private",
+      "debated",
+      "obvious"
+    ],
+    "answer": 2,
+    "hint": "controversial = debated（論争の的）"
+  },
+  {
+    "prompt": "Choose the correct word: 'This machine is easy to ______.'",
+    "choices": [
+      "decorate",
+      "separate",
+      "operate",
+      "tolerate"
+    ],
+    "answer": 2,
+    "hint": "operate a machine（操作する）"
+  },
+  {
+    "prompt": "Best collocation: 'take a ______ breath.'",
+    "choices": [
+      "large",
+      "thick",
+      "heavy",
+      "deep"
+    ],
+    "answer": 3,
+    "hint": "take a deep breath（深呼吸をする）"
+  },
+  {
+    "prompt": "『robust』の同義語は？",
+    "choices": [
+      "weak",
+      "narrow",
+      "strong",
+      "thin"
+    ],
+    "answer": 2,
+    "hint": "robust = strong（頑丈な）"
+  },
+  {
+    "prompt": "Best fit: 'highly ______ skills.'",
+    "choices": [
+      "raised",
+      "developed",
+      "height",
+      "grown"
+    ],
+    "answer": 1,
+    "hint": "highly developed skills（高度に発達した）"
+  },
+  {
+    "prompt": "『transparent』に近い意味は？",
+    "choices": [
+      "opaque",
+      "vague",
+      "clear",
+      "solid"
+    ],
+    "answer": 2,
+    "hint": "transparent = clear（透明な／明白な）"
+  },
+  {
+    "prompt": "Which means 'to extinguish a fire'?",
+    "choices": [
+      "put up",
+      "put away",
+      "put out",
+      "put off"
+    ],
+    "answer": 2,
+    "hint": "put out = 消す"
+  },
+  {
+    "prompt": "Choose a synonym for 'vital'.",
+    "choices": [
+      "decorative",
+      "redundant",
+      "essential",
+      "minor"
+    ],
+    "answer": 2,
+    "hint": "vital = essential（不可欠）"
+  },
+  {
+    "prompt": "Best choice: 'make a ______ impression.'",
+    "choices": [
+      "nice",
+      "strongly",
+      "power",
+      "good"
+    ],
+    "answer": 3,
+    "hint": "make a good impression（好印象を与える）"
+  },
+  {
+    "prompt": "Choose the correct word: 'Please ______ your seatbelt.'",
+    "choices": [
+      "attach",
+      "button",
+      "fasten",
+      "tighten"
+    ],
+    "answer": 2,
+    "hint": "fasten a seatbelt（シートベルトを締める）"
+  },
+  {
+    "prompt": "Best preposition: 'This book was written ___ 1995.'",
+    "choices": [
+      "for",
+      "in",
+      "at",
+      "on"
+    ],
+    "answer": 1,
+    "hint": "years → in"
+  },
+  {
+    "prompt": "Choose: 'He apologized ___ being late.'",
+    "choices": [
+      "for",
+      "to",
+      "of",
+      "about"
+    ],
+    "answer": 0,
+    "hint": "apologize for ~"
+  },
+  {
+    "prompt": "Which means 'to continue'?",
+    "choices": [
+      "give in",
+      "break off",
+      "call off",
+      "carry on"
+    ],
+    "answer": 3,
+    "hint": "carry on = 続ける"
+  },
+  {
+    "prompt": "Pick the best word: 'The company will ______ a new product.'",
+    "choices": [
+      "punch",
+      "launch",
+      "lunches",
+      "lunch"
+    ],
+    "answer": 1,
+    "hint": "launch a product（発売する）"
+  },
+  {
+    "prompt": "Choose the natural sentence.",
+    "choices": [
+      "He suggested going by bus.",
+      "He suggested that to go by bus.",
+      "He suggested to go by bus.",
+      "He suggested go by bus."
+    ],
+    "answer": 0,
+    "hint": "suggest + ~ing"
+  },
+  {
+    "prompt": "Choose a synonym for 'precise'.",
+    "choices": [
+      "exact",
+      "rough",
+      "broad",
+      "wild"
+    ],
+    "answer": 0,
+    "hint": "precise = exact（正確な）"
+  },
+  {
+    "prompt": "Fill in the blank: 'I am looking forward ___ meeting you.'",
+    "choices": [
+      "to",
+      "with",
+      "at",
+      "for"
+    ],
+    "answer": 0,
+    "hint": "look forward to ~ing"
+  },
+  {
+    "prompt": "'to raise a topic in conversation' は？",
+    "choices": [
+      "get by",
+      "come across",
+      "bring up",
+      "break down"
+    ],
+    "answer": 2,
+    "hint": "bring up = 話題にする"
+  },
+  {
+    "prompt": "Choose the verb meaning 'to officially end a law or system.'",
+    "choices": [
+      "abolish",
+      "accomplish",
+      "polish",
+      "establish"
+    ],
+    "answer": 0,
+    "hint": "abolish = 廃止する"
+  },
+  {
+    "prompt": "Pick a synonym for 'alleviate'.",
+    "choices": [
+      "create",
+      "ignore",
+      "worsen",
+      "relieve"
+    ],
+    "answer": 3,
+    "hint": "alleviate = relieve（和らげる）"
+  },
+  {
+    "prompt": "Choose the antonym of 'compulsory'.",
+    "choices": [
+      "obligatory",
+      "required",
+      "optional",
+      "mandatory"
+    ],
+    "answer": 2,
+    "hint": "compulsory ↔ optional 任意の"
+  },
+  {
+    "prompt": "Best choice: 'I was born ___ 2001.'",
+    "choices": [
+      "on",
+      "by",
+      "in",
+      "at"
+    ],
+    "answer": 2,
+    "hint": "years → in"
+  },
+  {
+    "prompt": "Pick the adjective meaning 'able to adapt to new conditions.'",
+    "choices": [
+      "fragile",
+      "liable",
+      "feasible",
+      "flexible"
+    ],
+    "answer": 3,
+    "hint": "flexible = 柔軟な"
+  },
+  {
+    "prompt": "Pick the antonym of 'fragile'.",
+    "choices": [
+      "delicate",
+      "brittle",
+      "weak",
+      "durable"
+    ],
+    "answer": 3,
+    "hint": "fragile ↔ durable（丈夫な）"
+  },
+  {
+    "prompt": "Choose a synonym for 'ban'.",
+    "choices": [
+      "prohibit",
+      "ignore",
+      "allow",
+      "observe"
+    ],
+    "answer": 0,
+    "hint": "ban = prohibit（禁止する）"
+  },
+  {
+    "prompt": "Select the meaning of 'once in a blue moon'.",
+    "choices": [
+      "very rarely",
+      "at midnight",
+      "very often",
+      "with sadness"
+    ],
+    "answer": 0,
+    "hint": "once in a blue moon = ごくまれに"
+  },
+  {
+    "prompt": "Which means 'to arrive or appear (often unexpectedly)'?",
+    "choices": [
+      "turn up",
+      "turn down",
+      "turn in",
+      "turn off"
+    ],
+    "answer": 0,
+    "hint": "turn up = 現れる"
+  },
+  {
+    "prompt": "Pick a synonym for 'assert'.",
+    "choices": [
+      "whisper",
+      "guess",
+      "deny",
+      "claim"
+    ],
+    "answer": 3,
+    "hint": "assert = claim（主張する）"
+  },
+  {
+    "prompt": "'to reject an offer or request' は？",
+    "choices": [
+      "take up",
+      "back up",
+      "turn down",
+      "look down"
+    ],
+    "answer": 2,
+    "hint": "turn down = 断る"
+  },
+  {
+    "prompt": "Choose: 'He is afraid ___ snakes.'",
+    "choices": [
+      "for",
+      "to",
+      "at",
+      "of"
+    ],
+    "answer": 3,
+    "hint": "be afraid of ~"
+  },
+  {
+    "prompt": "『temporary』の同義語は？",
+    "choices": [
+      "final",
+      "permanent",
+      "short-term",
+      "constant"
+    ],
+    "answer": 2,
+    "hint": "temporary = short-term（一時的な）"
+  },
+  {
+    "prompt": "'to establish/arrange an event or equipment' は？",
+    "choices": [
+      "set back",
+      "set up",
+      "set in",
+      "set out"
+    ],
+    "answer": 1,
+    "hint": "set up = 設置する／準備する"
+  },
+  {
+    "prompt": "Which means 'to remove (especially clothing)'?",
+    "choices": [
+      "take over",
+      "take in",
+      "take on",
+      "take off"
+    ],
+    "answer": 3,
+    "hint": "take off = 脱ぐ／離陸する"
+  },
+  {
+    "prompt": "'to meet someone by chance' は？",
+    "choices": [
+      "bump into",
+      "look up",
+      "run for",
+      "count on"
+    ],
+    "answer": 0,
+    "hint": "bump into = 偶然会う"
+  },
+  {
+    "prompt": "『essential』と最も近い意味を選んでください。",
+    "choices": [
+      "trivial",
+      "optional",
+      "occasional",
+      "crucial"
+    ],
+    "answer": 3,
+    "hint": "essential = crucial（きわめて重要な）"
+  },
+  {
+    "prompt": "Pick a synonym for 'reluctant'.",
+    "choices": [
+      "eager",
+      "proud",
+      "able",
+      "unwilling"
+    ],
+    "answer": 3,
+    "hint": "reluctant = unwilling（気が進まない）"
+  },
+  {
+    "prompt": "Select the correct word: 'We need to ______ the data before release.'",
+    "choices": [
+      "vary",
+      "occupy",
+      "verify",
+      "notify"
+    ],
+    "answer": 2,
+    "hint": "verify = 検証する"
+  },
+  {
+    "prompt": "Select the best: 'raise an ______.'",
+    "choices": [
+      "engine",
+      "issue",
+      "accident",
+      "effort"
+    ],
+    "answer": 1,
+    "hint": "raise an issue（問題を提起する）"
+  },
+  {
+    "prompt": "Fill: 'The train arrived ___ time.'",
+    "choices": [
+      "for",
+      "on",
+      "at",
+      "in"
+    ],
+    "answer": 1,
+    "hint": "arrive on time"
+  },
+  {
+    "prompt": "Choose the natural sentence.",
+    "choices": [
+      "It depends for the weather.",
+      "It depends to the weather.",
+      "It depends of the weather.",
+      "It depends on the weather."
+    ],
+    "answer": 3,
+    "hint": "depend on ~"
+  },
+  {
+    "prompt": "Choose: 'She's married ___ a doctor.'",
+    "choices": [
+      "for",
+      "at",
+      "with",
+      "to"
+    ],
+    "answer": 3,
+    "hint": "be married to ~"
+  },
+  {
+    "prompt": "'to resemble (a parent)' は？",
+    "choices": [
+      "take off",
+      "take after",
+      "take over",
+      "take on"
+    ],
+    "answer": 1,
+    "hint": "take after = 似ている"
+  },
+  {
+    "prompt": "Choose a synonym for 'mandatory'.",
+    "choices": [
+      "optional",
+      "casual",
+      "voluntary",
+      "compulsory"
+    ],
+    "answer": 3,
+    "hint": "mandatory = compulsory（必須の）"
+  },
+  {
+    "prompt": "Choose the best: 'conduct a ______.'",
+    "choices": [
+      "survival",
+      "serve",
+      "service",
+      "survey"
+    ],
+    "answer": 3,
+    "hint": "conduct a survey（調査を行う）"
+  },
+  {
+    "prompt": "Select the word meaning 'fair and impartial.'",
+    "choices": [
+      "offensive",
+      "obvious",
+      "subjective",
+      "objective"
+    ],
+    "answer": 3,
+    "hint": "objective = 客観的な／公正な"
+  },
+  {
+    "prompt": "Fill in: 'She insisted ___ paying the bill.'",
+    "choices": [
+      "for",
+      "in",
+      "to",
+      "on"
+    ],
+    "answer": 3,
+    "hint": "insist on ~ing"
+  },
+  {
+    "prompt": "Choose the word that matches the definition: 'the ability to keep doing something difficult' (名詞).",
+    "choices": [
+      "performance",
+      "perseverance",
+      "permission",
+      "perspective"
+    ],
+    "answer": 1,
+    "hint": "perseverance = 忍耐力"
+  },
+  {
+    "prompt": "Match the explanation: 'to submit homework or a report.'",
+    "choices": [
+      "look after",
+      "put off",
+      "hand out",
+      "hand in"
+    ],
+    "answer": 3,
+    "hint": "hand in = 提出する"
+  },
+  {
+    "prompt": "'to extinguish (a light or fire)' は？",
+    "choices": [
+      "turn on",
+      "turn into",
+      "turn off",
+      "turn up"
+    ],
+    "answer": 2,
+    "hint": "turn off = 消す／止める"
+  },
+  {
+    "prompt": "'to tolerate or endure' は？",
+    "choices": [
+      "put out",
+      "put away",
+      "put up with",
+      "put down"
+    ],
+    "answer": 2,
+    "hint": "put up with = 我慢する"
+  },
+  {
+    "prompt": "Best choice: 'Her explanation was very ______.'",
+    "choices": [
+      "clearly",
+      "clarify",
+      "clear",
+      "clever"
+    ],
+    "answer": 2,
+    "hint": "clear（明確な）"
+  },
+  {
+    "prompt": "Choose the best phrase: 'I arrived ___ the airport at 6.'",
+    "choices": [
+      "on",
+      "in",
+      "at",
+      "to"
+    ],
+    "answer": 2,
+    "hint": "arrive at + small place"
+  },
+  {
+    "prompt": "Choose the meaning of 'on the same page'.",
+    "choices": [
+      "to have the same understanding",
+      "to disagree",
+      "to read the same book",
+      "to share a document"
+    ],
+    "answer": 0,
+    "hint": "on the same page = 認識が一致している"
+  },
+  {
+    "prompt": "Choose the best preposition: 'He is good ___ math.'",
+    "choices": [
+      "at",
+      "on",
+      "to",
+      "in"
+    ],
+    "answer": 0,
+    "hint": "be good at ~"
+  },
+  {
+    "prompt": "Pick a synonym for 'accelerate'.",
+    "choices": [
+      "give up",
+      "slow down",
+      "sum up",
+      "speed up"
+    ],
+    "answer": 3,
+    "hint": "accelerate = speed up（加速する）"
+  },
+  {
+    "prompt": "Choose the best match: 'break the ice' means...",
+    "choices": [
+      "to cause trouble",
+      "to start a friendly conversation in a tense situation",
+      "to end a relationship",
+      "to shatter glass"
+    ],
+    "answer": 1,
+    "hint": "break the ice = 場を和ませる"
+  },
+  {
+    "prompt": "Pick a synonym for 'innovative'.",
+    "choices": [
+      "stubborn",
+      "ancient",
+      "passive",
+      "creative"
+    ],
+    "answer": 3,
+    "hint": "innovative = creative（革新的な）"
+  },
+  {
+    "prompt": "Choose the word meaning 'to make something less serious or severe.'",
+    "choices": [
+      "motivate",
+      "mediate",
+      "migrate",
+      "mitigate"
+    ],
+    "answer": 3,
+    "hint": "mitigate = 緩和する"
+  },
+  {
+    "prompt": "Pick the noun meaning 'a careful plan to achieve a goal.'",
+    "choices": [
+      "storage",
+      "strategy",
+      "stratum",
+      "stadium"
+    ],
+    "answer": 1,
+    "hint": "strategy = 戦略"
+  },
+  {
+    "prompt": "'to rely on someone or something' はどれ？",
+    "choices": [
+      "count on",
+      "call on",
+      "chip in",
+      "cut off"
+    ],
+    "answer": 0,
+    "hint": "count on = 頼る"
+  },
+  {
+    "prompt": "Choose the natural sentence.",
+    "choices": [
+      "He did me laugh.",
+      "He let me to laugh.",
+      "He made me laugh.",
+      "He made me to laugh."
+    ],
+    "answer": 2,
+    "hint": "make + 人 + 動詞原形"
+  },
+  {
+    "prompt": "Choose a synonym for 'feasible'.",
+    "choices": [
+      "forbidden",
+      "possible",
+      "unlikely",
+      "impossible"
+    ],
+    "answer": 1,
+    "hint": "feasible = possible（実行可能）"
+  },
+  {
+    "prompt": "Fill in the blank: 'She is interested ___ physics.'",
+    "choices": [
+      "on",
+      "to",
+      "for",
+      "in"
+    ],
+    "answer": 3,
+    "hint": "be interested in ~"
+  },
+  {
+    "prompt": "Which means 'to investigate or search for info in a book/online'?",
+    "choices": [
+      "look for",
+      "look up",
+      "look into",
+      "look after"
+    ],
+    "answer": 1,
+    "hint": "look up = 調べる"
+  },
+  {
+    "prompt": "Choose the best: 'We discussed the plan ___ detail.'",
+    "choices": [
+      "on",
+      "in",
+      "at",
+      "with"
+    ],
+    "answer": 1,
+    "hint": "in detail"
+  },
+      {
+        prompt: "Choose the word that best matches the explanation: 'to briefly meet or see someone unexpectedly.'",
+        choices: ["bump into","look up","hand in","call off"],
+        answer: 0,
+        hint: "bump into = 偶然会う"
+      },
+      {
+        prompt: "『essential』と最も近い意味を選んでください。",
+        choices: ["crucial","optional","trivial","occasional"],
+        answer: 0,
+        hint: "essential = きわめて重要な"
+      },
+      {
+        prompt: "Which option fits the explanation: 'to cancel an event'?",
+        choices: ["put off","set up","call off","carry on"],
+        answer: 2,
+        hint: "call off = 中止する"
+      },
+      {
+        prompt: "『meticulous』の意味に最も近いものは？",
+        choices: ["careful and thorough","careless","generous","noisy"],
+        answer: 0,
+        hint: "meticulous = 非常に丁寧で細心の"
+      },
+      {
+        prompt: "Choose the best match: 'to search for information in a book or online.'",
+        choices: ["look up","make up","turn up","give up"],
+        answer: 0,
+        hint: "look up = 調べる"
+      }
+    ];
+
+    /** 問題バンクのロード */
+    function loadBank(){
+      try{
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if(!raw){
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(SAMPLE));
+          localStorage.setItem(STORAGE_META, JSON.stringify({count: SAMPLE.length, updated: Date.now()}));
+          return [...SAMPLE];
+        }
+        return JSON.parse(raw);
+      }catch(e){
+        console.warn('Load failed, falling back to SAMPLE', e);
+        return [...SAMPLE];
+      }
+    }
+
+    /** 問題バンクのセーブ */
+    function saveBank(bank){
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(bank));
+      localStorage.setItem(STORAGE_META, JSON.stringify({count: bank.length, updated: Date.now()}));
+      renderMeta();
+    }
+
+    /** メタ表示 */
+    function renderMeta(){
+      const metaEl = document.getElementById('meta');
+      const raw = localStorage.getItem(STORAGE_META);
+      if(!raw){ metaEl.textContent = ''; return; }
+      const meta = JSON.parse(raw);
+      const d = new Date(meta.updated);
+      metaEl.textContent = `問題数: ${meta.count}｜最終更新: ${d.toLocaleString()}`;
+    }
+
+    // ====== 状態 ======
+    let bank /**: QA[] */ = loadBank();
+    let index = 0; // 現在の問題番号（bank上の）
+    let score = 0;
+    let streak = 0;
+    let order = [0,1,2,3]; // 表示順（選択肢の）
+    let answered = false;
+
+    // 要素参照
+    const elPrompt = document.getElementById('prompt');
+    const elChoices = document.getElementById('choices');
+    const elFeedback = document.getElementById('feedback');
+    const elProgress = document.getElementById('progress');
+    const elScore = document.getElementById('score');
+    const elStreak = document.getElementById('streak');
+
+    function shuffle(arr){
+      const a = arr.slice();
+      for(let i=a.length-1;i>0;i--){
+        const j = Math.floor(Math.random()*(i+1));
+        [a[i],a[j]]=[a[j],a[i]];
+      }
+      return a;
+    }
+
+    function render(){
+      if(bank.length===0){
+        elPrompt.textContent = '問題がありません。右側の「問題の追加・管理」で追加してください。';
+        elChoices.innerHTML = '';
+        elProgress.textContent = '0 / 0';
+        return;
+      }
+      const q = bank[index];
+      elPrompt.textContent = q.prompt;
+      elFeedback.textContent = '';
+      elProgress.textContent = `${index+1} / ${bank.length}`;
+      elScore.textContent = `得点: ${score}`;
+      elStreak.textContent = `連続正解: ${streak}`;
+
+      order = shuffle([0,1,2,3]);
+      elChoices.innerHTML = '';
+      order.forEach((k, i)=>{
+        const btn = document.createElement('button');
+        btn.className='choice';
+        btn.textContent = `${i+1}. ${q.choices[k]}`;
+        btn.addEventListener('click', ()=> select(i));
+        elChoices.appendChild(btn);
+      });
+      answered=false;
+    }
+
+    function select(viewIdx){
+      if(answered) return;
+      answered=true;
+      const q = bank[index];
+      const actualChoiceIndex = order[viewIdx];
+      const correctViewIndex = order.indexOf(q.answer);
+      const buttons = Array.from(elChoices.querySelectorAll('.choice'));
+      buttons.forEach((b)=> b.setAttribute('disabled','true'));
+
+      if(actualChoiceIndex === q.answer){
+        buttons[viewIdx].classList.add('correct');
+        score += 10; streak += 1;
+        elFeedback.innerHTML = `✅ <span class="right">正解！</span> ${q.hint?`— ${escapeHtml(q.hint)}`:''}`;
+      }else{
+        buttons[viewIdx].classList.add('wrong');
+        buttons[correctViewIndex]?.classList.add('correct');
+        streak = 0;
+        elFeedback.innerHTML = `❌ <span class="wrong">不正解。</span> 正解は「${q.choices[q.answer]}」。 ${q.hint?`— ${escapeHtml(q.hint)}`:''}`;
+      }
+      elScore.textContent = `得点: ${score}`;
+      elStreak.textContent = `連続正解: ${streak}`;
+    }
+
+    function showAnswer(){
+      if(answered) return; // 既に回答済みなら無視
+      const q = bank[index];
+      const correctViewIndex = order.indexOf(q.answer);
+      const buttons = Array.from(elChoices.querySelectorAll('.choice'));
+      buttons.forEach((b)=> b.setAttribute('disabled','true'));
+      buttons[correctViewIndex]?.classList.add('correct');
+      streak = 0; // パス扱い
+      elFeedback.innerHTML = `ℹ️ 正解は「${q.choices[q.answer]}」。 ${q.hint?`— ${escapeHtml(q.hint)}`:''}`;
+      answered = true;
+    }
+
+    function next(){
+      if(bank.length===0) return;
+      index = (index + 1) % bank.length;
+      render();
+    }
+
+    function resetAll(){
+      score = 0; streak = 0; index = 0; render();
+    }
+
+    // ====== 入出力（追加・エクスポート・インポート） ======
+    const $ = (id)=>document.getElementById(id);
+    $('btnAdd').addEventListener('click', ()=>{
+      const prompt = $('qPrompt').value.trim();
+      const c0 = $('opt0').value.trim();
+      const c1 = $('opt1').value.trim();
+      const c2 = $('opt2').value.trim();
+      const c3 = $('opt3').value.trim();
+      const ans = parseInt(($('ans')).value,10);
+      const hint = $('hint').value.trim();
+      if(!prompt || !c0 || !c1 || !c2 || !c3){
+        alert('説明と4つの選択肢をすべて入力してください。');
+        return;
+      }
+      /** @type {QA} */
+      const qa = {prompt, choices:[c0,c1,c2,c3], answer: ans, hint: hint||undefined};
+      bank.push(qa);
+      saveBank(bank);
+      clearForm();
+      index = bank.length - 1; // 追加した問題へ
+      render();
+    });
+
+    function clearForm(){
+      $('qPrompt').value='';
+      $('opt0').value='';$('opt1').value='';$('opt2').value='';$('opt3').value='';
+      $('ans').value='0';
+      $('hint').value='';
+    }
+
+    $('btnExport').addEventListener('click', ()=>{
+      const blob = new Blob([JSON.stringify(bank, null, 2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'english_quiz_bank.json';
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    $('fileImport').addEventListener('change', (ev)=>{
+      const file = ev.target.files?.[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = ()=>{
+        try{
+          const data = JSON.parse(String(reader.result));
+          if(!Array.isArray(data)) throw new Error('JSON は配列形式である必要があります。');
+          // 軽いバリデーション
+          const ok = data.every(it=> typeof it?.prompt==='string' && Array.isArray(it?.choices) && it.choices.length===4 && Number.isInteger(it?.answer));
+          if(!ok) throw new Error('フォーマットが正しくありません。{prompt, choices[4], answer} を確認してください。');
+          bank = data;
+          saveBank(bank);
+          index=0;score=0;streak=0;render();
+          ev.target.value='';
+        }catch(err){
+          alert('読み込みに失敗しました：'+ err.message);
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    $('btnClear').addEventListener('click', ()=>{
+      if(!confirm('本当に全削除して初期サンプルに戻しますか？')) return;
+      bank = [...SAMPLE];
+      saveBank(bank);
+      index=0;score=0;streak=0;render();
+    });
+
+    // ====== クイズ操作ボタン ======
+    $('btnNext').addEventListener('click', next);
+    $('btnShow').addEventListener('click', showAnswer);
+    $('btnShuffle').addEventListener('click', ()=>{
+      bank = shuffle(bank);
+      index = 0; render();
+    });
+    $('btnReset').addEventListener('click', resetAll);
+
+    // ====== キーボード操作（1-4で回答、Nで次へ、Sで答え） ======
+    window.addEventListener('keydown', (e)=>{
+      if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)) return;
+      if(e.key>='1' && e.key<='4'){
+        const i = parseInt(e.key,10)-1; select(i);
+      }else if(e.key==='n' || e.key==='N'){
+        next();
+      }else if(e.key==='s' || e.key==='S'){
+        showAnswer();
+      }
+    });
+
+    function escapeHtml(str){
+      return str.replace(/[&<>"]+/g, s=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[s]));
+    }
+
+    // 初期化
+    renderMeta();
+    render();
+  </script>
+</body>
+</html>
